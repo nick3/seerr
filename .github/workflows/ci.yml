@@ -15,7 +15,7 @@ permissions:
   contents: read
 
 env:
-  DOCKER_HUB: seerr/seerr
+  DOCKER_HUB: nick3/seerr
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}

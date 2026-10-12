@@ -48,6 +48,80 @@ servers:
 
 components:
   schemas:
+    DoubanRatingResponse:
+      type: object
+      required: [rating]
+      properties:
+        rating:
+          type: object
+          nullable: true
+          required: [id, title, year, score, url]
+          properties:
+            id:
+              type: string
+              example: '37083974'
+            title:
+              type: string
+              example: '魔女嘉莉 Carrie (2026)'
+            year:
+              type: integer
+              example: 2026
+            score:
+              type: number
+              nullable: true
+              minimum: 0
+              maximum: 10
+              example: 7.8
+            url:
+              type: string
+              format: uri
+              example: 'https://movie.douban.com/subject/37083974/'
+    DoubanCommentsResponse:
+      type: object
+      required: [subject, comments, total]
+      properties:
+        subject:
+          type: object
+          nullable: true
+          required: [id, title, url]
+          properties:
+            id:
+              type: string
+            title:
+              type: string
+            url:
+              type: string
+              format: uri
+        total:
+          type: integer
+          minimum: 0
+          description: Total short reviews reported by Douban, including reviews outside this preview.
+        comments:
+          type: array
+          maxItems: 6
+          items:
+            type: object
+            required: [id, author, content, rating, votes, date]
+            properties:
+              id:
+                type: string
+              author:
+                type: string
+              content:
+                type: string
+              rating:
+                type: integer
+                nullable: true
+                minimum: 1
+                maximum: 5
+                description: The reviewer's star rating, not the subject's aggregate score.
+              votes:
+                type: integer
+                minimum: 0
+              date:
+                type: string
+                nullable: true
+                format: date
     Blocklist:
       type: object
       properties:
@@ -6924,6 +6998,56 @@ paths:
                     type: array
                     items:
                       $ref: '#/components/schemas/MovieResult'
+  /movie/{movieId}/ratings/douban:
+    get:
+      summary: Get the Douban movie rating
+      description: Matches the Chinese or original title and release year against Douban. Returns a null rating when there is no unambiguous match; a null score means the matched title is not yet rated.
+      tags:
+        - movies
+      parameters:
+        - in: path
+          name: movieId
+          required: true
+          schema:
+            type: integer
+            minimum: 1
+      responses:
+        '200':
+          description: Douban rating lookup completed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DoubanRatingResponse'
+        '503':
+          description: Rating provider temporarily unavailable
+  /movie/{movieId}/comments/douban:
+    get:
+      summary: Get a preview of Douban movie short reviews
+      description: Returns up to six public short reviews for the same matched Douban subject used by the rating endpoint. A null subject means no unambiguous match was found.
+      tags:
+        - movies
+      parameters:
+        - in: path
+          name: movieId
+          required: true
+          schema:
+            type: integer
+            minimum: 1
+        - in: query
+          name: sort
+          schema:
+            type: string
+            enum: [new_score, time]
+            default: new_score
+      responses:
+        '200':
+          description: Douban short review lookup completed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DoubanCommentsResponse'
+        '503':
+          description: Short review provider temporarily unavailable
   /movie/{movieId}/ratings:
     get:
       summary: Get movie ratings
@@ -7169,6 +7293,56 @@ paths:
                     type: array
                     items:
                       $ref: '#/components/schemas/TvResult'
+  /tv/{tvId}/ratings/douban:
+    get:
+      summary: Get the Douban TV rating
+      description: Matches the Chinese or original title and first air year against Douban. For series rated by season, only the first season is considered. Returns a null rating when there is no unambiguous match; a null score means the matched title is not yet rated.
+      tags:
+        - tv
+      parameters:
+        - in: path
+          name: tvId
+          required: true
+          schema:
+            type: integer
+            minimum: 1
+      responses:
+        '200':
+          description: Douban rating lookup completed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DoubanRatingResponse'
+        '503':
+          description: Rating provider temporarily unavailable
+  /tv/{tvId}/comments/douban:
+    get:
+      summary: Get a preview of Douban TV short reviews
+      description: Returns up to six public short reviews for the same matched Douban subject used by the rating endpoint. For series rated by season, only the first season is considered. A null subject means no unambiguous match was found.
+      tags:
+        - tv
+      parameters:
+        - in: path
+          name: tvId
+          required: true
+          schema:
+            type: integer
+            minimum: 1
+        - in: query
+          name: sort
+          schema:
+            type: string
+            enum: [new_score, time]
+            default: new_score
+      responses:
+        '200':
+          description: Douban short review lookup completed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DoubanCommentsResponse'
+        '503':
+          description: Short review provider temporarily unavailable
   /tv/{tvId}/ratings:
     get:
       summary: Get TV ratings

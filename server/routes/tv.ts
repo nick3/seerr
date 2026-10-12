@@ -11,8 +11,12 @@ import logger from '@server/logger';
 import { mapTvResult } from '@server/models/Search';
 import { mapSeasonWithEpisodes, mapTvDetails } from '@server/models/Tv';
 import { Router } from 'express';
+import { doubanCommentsHandler, doubanRatingHandler } from './ratings';
 
 const tvRoutes = Router();
+
+tvRoutes.get('/:id/ratings/douban', doubanRatingHandler('tv'));
+tvRoutes.get('/:id/comments/douban', doubanCommentsHandler('tv'));
 
 tvRoutes.get('/:id', async (req, res, next) => {
   const tmdb = new TheMovieDb();

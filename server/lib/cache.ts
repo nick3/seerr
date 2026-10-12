@@ -7,6 +7,7 @@ export type AvailableCacheIds =
   | 'sonarr'
   | 'rt'
   | 'imdb'
+  | 'douban'
   | 'github'
   | 'plextv'
   | 'plexwatchlist'
@@ -234,6 +235,10 @@ class CacheManager {
     imdb: new Cache('imdb', 'IMDB Radarr Proxy', {
       stdTtl: 43200,
       max: IMDB_MAX_KEYS,
+    }),
+    douban: new Cache('douban', 'Douban Ratings', {
+      stdTtl: 21600,
+      max: 500,
     }),
     github: new Cache('github', 'GitHub API', {
       stdTtl: 21600,

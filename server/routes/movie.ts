@@ -10,8 +10,12 @@ import logger from '@server/logger';
 import { mapMovieDetails } from '@server/models/Movie';
 import { mapMovieResult } from '@server/models/Search';
 import { Router } from 'express';
+import { doubanCommentsHandler, doubanRatingHandler } from './ratings';
 
 const movieRoutes = Router();
+
+movieRoutes.get('/:id/ratings/douban', doubanRatingHandler('movie'));
+movieRoutes.get('/:id/comments/douban', doubanCommentsHandler('movie'));
 
 movieRoutes.get('/:id', async (req, res, next) => {
   const tmdb = new TheMovieDb();

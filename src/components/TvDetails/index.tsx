@@ -8,6 +8,7 @@ import BlocklistModal from '@app/components/BlocklistModal';
 import Badge from '@app/components/Common/Badge';
 import Button from '@app/components/Common/Button';
 import CachedImage from '@app/components/Common/CachedImage';
+import DoubanRating from '@app/components/Common/DoubanRating';
 import LoadingSpinner from '@app/components/Common/LoadingSpinner';
 import PageTitle from '@app/components/Common/PageTitle';
 import type { PlayButtonLink } from '@app/components/Common/PlayButton';
@@ -15,6 +16,7 @@ import PlayButton from '@app/components/Common/PlayButton';
 import StatusBadgeMini from '@app/components/Common/StatusBadgeMini';
 import Tag from '@app/components/Common/Tag';
 import Tooltip from '@app/components/Common/Tooltip';
+import DoubanComments from '@app/components/DoubanComments';
 import ExternalLinkBlock from '@app/components/ExternalLinkBlock';
 import IssueModal from '@app/components/IssueModal';
 import ManageSlideOver from '@app/components/ManageSlideOver';
@@ -1109,63 +1111,56 @@ const TvDetails = ({ tv }: TvDetailsProps) => {
         </div>
         <div className="media-overview-right">
           <div className="media-facts">
-            {(!!data.voteCount ||
-              (ratingData?.criticsRating && !!ratingData?.criticsScore) ||
-              (ratingData?.audienceRating && !!ratingData?.audienceScore)) && (
-              <div className="media-ratings">
-                {ratingData?.criticsRating && !!ratingData?.criticsScore && (
-                  <Tooltip
-                    content={intl.formatMessage(messages.rtcriticsscore)}
+            <div className="media-ratings">
+              {ratingData?.criticsRating && !!ratingData?.criticsScore && (
+                <Tooltip content={intl.formatMessage(messages.rtcriticsscore)}>
+                  <a
+                    href={ratingData.url}
+                    className="media-rating"
+                    target="_blank"
+                    rel="noreferrer"
                   >
-                    <a
-                      href={ratingData.url}
-                      className="media-rating"
-                      target="_blank"
-                      rel="noreferrer"
-                    >
-                      {ratingData.criticsRating === 'Rotten' ? (
-                        <RTRotten className="mr-1 w-6" />
-                      ) : (
-                        <RTFresh className="mr-1 w-6" />
-                      )}
-                      <span>{ratingData.criticsScore}%</span>
-                    </a>
-                  </Tooltip>
-                )}
-                {ratingData?.audienceRating && !!ratingData?.audienceScore && (
-                  <Tooltip
-                    content={intl.formatMessage(messages.rtaudiencescore)}
+                    {ratingData.criticsRating === 'Rotten' ? (
+                      <RTRotten className="mr-1 w-6" />
+                    ) : (
+                      <RTFresh className="mr-1 w-6" />
+                    )}
+                    <span>{ratingData.criticsScore}%</span>
+                  </a>
+                </Tooltip>
+              )}
+              {ratingData?.audienceRating && !!ratingData?.audienceScore && (
+                <Tooltip content={intl.formatMessage(messages.rtaudiencescore)}>
+                  <a
+                    href={ratingData.url}
+                    className="media-rating"
+                    target="_blank"
+                    rel="noreferrer"
                   >
-                    <a
-                      href={ratingData.url}
-                      className="media-rating"
-                      target="_blank"
-                      rel="noreferrer"
-                    >
-                      {ratingData.audienceRating === 'Spilled' ? (
-                        <RTAudRotten className="mr-1 w-6" />
-                      ) : (
-                        <RTAudFresh className="mr-1 w-6" />
-                      )}
-                      <span>{ratingData.audienceScore}%</span>
-                    </a>
-                  </Tooltip>
-                )}
-                {!!data.voteCount && (
-                  <Tooltip content={intl.formatMessage(messages.tmdbuserscore)}>
-                    <a
-                      href={`https://www.themoviedb.org/tv/${data.id}?language=${locale}`}
-                      className="media-rating"
-                      target="_blank"
-                      rel="noreferrer"
-                    >
-                      <TmdbLogo className="mr-1 w-6" />
-                      <span>{Math.round(data.voteAverage * 10)}%</span>
-                    </a>
-                  </Tooltip>
-                )}
-              </div>
-            )}
+                    {ratingData.audienceRating === 'Spilled' ? (
+                      <RTAudRotten className="mr-1 w-6" />
+                    ) : (
+                      <RTAudFresh className="mr-1 w-6" />
+                    )}
+                    <span>{ratingData.audienceScore}%</span>
+                  </a>
+                </Tooltip>
+              )}
+              {!!data.voteCount && (
+                <Tooltip content={intl.formatMessage(messages.tmdbuserscore)}>
+                  <a
+                    href={`https://www.themoviedb.org/tv/${data.id}?language=${locale}`}
+                    className="media-rating"
+                    target="_blank"
+                    rel="noreferrer"
+                  >
+                    <TmdbLogo className="mr-1 w-6" />
+                    <span>{Math.round(data.voteAverage * 10)}%</span>
+                  </a>
+                </Tooltip>
+              )}
+              <DoubanRating mediaType="tv" tmdbId={data.id} />
+            </div>
             {data.originalName &&
               data.originalLanguage !== locale.slice(0, 2) && (
                 <div className="media-fact">
@@ -1339,6 +1334,7 @@ const TvDetails = ({ tv }: TvDetailsProps) => {
           </div>
         </div>
       </div>
+      <DoubanComments mediaType="tv" tmdbId={data.id} />
       {data.credits.cast.length > 0 && (
         <>
           <div className="slider-header">

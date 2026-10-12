@@ -15,7 +15,7 @@ concurrency:
   cancel-in-progress: true
 
 env:
-  DOCKER_HUB: seerr/seerr
+  DOCKER_HUB: nick3/seerr
 
 jobs:
   changelog:
