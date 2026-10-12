@@ -32,24 +32,25 @@ jobs:
             arch: arm64
     runs-on: ${{ matrix.runner }}
     steps:
-      - parallel:
-          - name: Checkout
-            uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-            with:
-              persist-credentials: false
+      # Run setup actions sequentially to avoid GITHUB_EVENT_PATH races.
+      # https://github.com/actions/checkout/issues/2484
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
 
-          - name: Set up Docker Buildx
-            uses: docker/setup-buildx-action@37fe631027851001ddb9b187196cc803df7f5f0e # v4
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@37fe631027851001ddb9b187196cc803df7f5f0e # v4
 
-          - name: Derive preview version from tag
-            id: ver
-            shell: bash
-            run: |
-              TAG="${GITHUB_REF_NAME}"
-              VER="${TAG#preview-}"
-              VER="${VER#v}"
-              echo "version=${VER}" >> "$GITHUB_OUTPUT"
-              echo "Building preview version: ${VER}"
+      - name: Derive preview version from tag
+        id: ver
+        shell: bash
+        run: |
+          TAG="${GITHUB_REF_NAME}"
+          VER="${TAG#preview-}"
+          VER="${VER#v}"
+          echo "version=${VER}" >> "$GITHUB_OUTPUT"
+          echo "Building preview version: ${VER}"
 
       - name: Commit timestamp
         id: ts
@@ -79,24 +80,23 @@ jobs:
       packages: write
       id-token: write
     steps:
-      - parallel:
-          - name: Checkout
-            uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-            with:
-              persist-credentials: false
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
 
-          - name: Set up Docker Buildx
-            uses: docker/setup-buildx-action@37fe631027851001ddb9b187196cc803df7f5f0e # v4
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@37fe631027851001ddb9b187196cc803df7f5f0e # v4
 
-          - name: Derive preview version from tag
-            id: ver
-            shell: bash
-            run: |
-              TAG="${GITHUB_REF_NAME}"
-              VER="${TAG#preview-}"
-              VER="${VER#v}"
-              echo "version=${VER}" >> "$GITHUB_OUTPUT"
-              echo "Publishing preview version: ${VER}"
+      - name: Derive preview version from tag
+        id: ver
+        shell: bash
+        run: |
+          TAG="${GITHUB_REF_NAME}"
+          VER="${TAG#preview-}"
+          VER="${VER#v}"
+          echo "version=${VER}" >> "$GITHUB_OUTPUT"
+          echo "Publishing preview version: ${VER}"
 
       - name: Log in to Docker Hub
         uses: docker/login-action@dbcb813823bdd20940b903addbd779551569679f # v4.6.0
