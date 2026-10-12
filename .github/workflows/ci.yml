@@ -259,6 +259,7 @@ jobs:
             ghcr.io/${{ github.repository }}
           tags: |
             type=raw,value=develop
+            type=raw,value=latest
             type=sha
           labels: |
             org.opencontainers.image.created=${{ steps.ts.outputs.TIMESTAMP }}
