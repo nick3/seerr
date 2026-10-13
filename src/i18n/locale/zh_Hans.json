@@ -1683,5 +1683,21 @@
   "components.Settings.Notifications.NotificationsGotify.validationPriorityRequired": "",
   "components.Settings.SettingsMain.apikeyCopied": "",
   "components.Settings.notTested": "",
-  "components.Settings.SettingsJobsCache.flushdnscache": ""
+  "components.Settings.SettingsJobsCache.flushdnscache": "",
+  "components.DoubanComments.BindingModal.cancel": "取消",
+  "components.DoubanComments.BindingModal.error": "豆瓣暂时无法访问，请稍后重试。",
+  "components.DoubanComments.BindingModal.help": "粘贴豆瓣条目链接或编号，核对名称和年份后保存。绑定将用于所有用户看到的评分和短评。",
+  "components.DoubanComments.BindingModal.imdb": "通过 IMDb 编号匹配",
+  "components.DoubanComments.BindingModal.input": "豆瓣条目链接或编号",
+  "components.DoubanComments.BindingModal.invalid": "请输入有效的豆瓣条目链接或纯数字编号。",
+  "components.DoubanComments.BindingModal.manual": "手动绑定",
+  "components.DoubanComments.BindingModal.mismatch": "该条目的类型不符，请选择对应的电影或剧集。",
+  "components.DoubanComments.BindingModal.name": "通过名称和年份匹配",
+  "components.DoubanComments.BindingModal.preview": "核对条目",
+  "components.DoubanComments.BindingModal.reset": "恢复自动匹配",
+  "components.DoubanComments.BindingModal.save": "保存绑定",
+  "components.DoubanComments.BindingModal.saved": "当前绑定：{id}",
+  "components.DoubanComments.BindingModal.title": "绑定豆瓣条目",
+  "components.DoubanComments.BindingModal.year": "年份：{year}",
+  "components.DoubanComments.binding": "绑定豆瓣条目"
 }

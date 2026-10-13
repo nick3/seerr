@@ -4,13 +4,16 @@ import {
   doubanCommentsHandler,
   doubanRatingHandler,
 } from '@server/routes/ratings';
+import { setupTestDb } from '@server/test/db';
 import type { ErrorRequestHandler } from 'express';
 import express from 'express';
 import * as OpenApiValidator from 'express-openapi-validator';
 import assert from 'node:assert/strict';
 import path from 'node:path';
-import { after, afterEach, describe, it, mock } from 'node:test';
+import { after, afterEach, beforeEach, describe, it, mock } from 'node:test';
 import request from 'supertest';
+
+setupTestDb();
 
 const tmdbCalls: { type: string; options: unknown }[] = [];
 for (const name of ['getMovie', 'getTvShow'] as const) {
@@ -147,6 +150,9 @@ describe('Douban rating endpoints', () => {
 });
 
 describe('Douban short review endpoints', () => {
+  beforeEach(() => {
+    mock.method(Douban.prototype, 'getSubject', async () => subject);
+  });
   const subject = {
     id: '37083974',
     title: '魔女嘉莉',

@@ -14,3 +14,7 @@ export interface DoubanRatingResponse {
 export interface DoubanCommentsResponse extends DoubanComments {
   subject: Pick<DoubanRating, 'id' | 'title' | 'url'> | null;
 }
+
+export interface DoubanBindingResponse {
+  binding: { doubanId: string; source: 'manual' | 'imdb' | 'title' } | null;
+}

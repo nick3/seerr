@@ -1,5 +1,7 @@
 import Button from '@app/components/Common/Button';
+import { Permission, useUser } from '@app/hooks/useUser';
 import defineMessages from '@app/utils/defineMessages';
+import { Transition } from '@headlessui/react';
 import {
   ArrowTopRightOnSquareIcon,
   HandThumbUpIcon,
@@ -7,13 +9,19 @@ import {
 import { StarIcon } from '@heroicons/react/24/solid';
 import type { DoubanCommentSort } from '@server/api/rating/douban';
 import type { DoubanCommentsResponse } from '@server/api/ratings';
+import dynamic from 'next/dynamic';
 import Image from 'next/image';
 import { useState } from 'react';
 import { useIntl } from 'react-intl';
 import useSWR from 'swr';
 
+const BindingModal = dynamic(
+  () => import('@app/components/DoubanComments/BindingModal')
+);
+
 const messages = defineMessages('components.DoubanComments', {
   title: 'Douban Short Reviews',
+  binding: 'Bind Douban Title',
   hot: 'Popular',
   latest: 'Latest',
   total: '{count, plural, one {# short review} other {# short reviews}}',
@@ -37,6 +45,8 @@ const DoubanComments = ({
   tmdbId: number;
 }) => {
   const intl = useIntl();
+  const { hasPermission } = useUser();
+  const [showBinding, setShowBinding] = useState(false);
   const [sort, setSort] = useState<DoubanCommentSort>('new_score');
   const { data, error, isValidating, mutate } = useSWR<DoubanCommentsResponse>(
     `/api/v1/${mediaType}/${tmdbId}/comments/douban?sort=${sort}`,
@@ -50,6 +60,14 @@ const DoubanComments = ({
 
   return (
     <section className="mt-8" aria-labelledby={headingId}>
+      <Transition as="div" show={showBinding}>
+        <BindingModal
+          key={`${mediaType}:${tmdbId}`}
+          mediaType={mediaType}
+          tmdbId={tmdbId}
+          onClose={() => setShowBinding(false)}
+        />
+      </Transition>
       <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
         <div className="min-w-0">
           <h2 id={headingId} className="heading flex items-center gap-2">
@@ -70,6 +88,15 @@ const DoubanComments = ({
           )}
         </div>
         <div className="flex flex-wrap items-center gap-2">
+          {hasPermission(Permission.ADMIN) && (
+            <Button
+              buttonSize="sm"
+              buttonType="ghost"
+              onClick={() => setShowBinding(true)}
+            >
+              {intl.formatMessage(messages.binding)}
+            </Button>
+          )}
           <Button
             buttonSize="sm"
             buttonType={sort === 'new_score' ? 'primary' : 'ghost'}

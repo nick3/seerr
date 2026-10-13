@@ -139,6 +139,128 @@ class Douban extends ExternalAPI {
     return request;
   }
 
+  /** Read a known subject without relying on names or search availability. */
+  public async getSubject(
+    subjectId: string,
+    mediaType: 'movie' | 'tv',
+    year?: number
+  ): Promise<DoubanRating | null> {
+    if (!/^[1-9]\d{0,11}$/.test(subjectId)) {
+      throw new Error('Invalid Douban subject ID');
+    }
+    const subject = await this.get<unknown>(
+      '/j/subject_abstract',
+      {
+        params: { subject_id: subjectId },
+        maxRedirects: 0,
+        maxContentLength: 1024 * 1024,
+      },
+      NO_RATING_TTL,
+      {
+        cache: cacheManager.getCache('douban').data,
+        transform: (data) => {
+          const parsed = abstractSchema.safeParse(data);
+          if (!parsed.success || parsed.data.subject.id !== subjectId) {
+            throw new Error('Invalid Douban subject response');
+          }
+          return data;
+        },
+      }
+    );
+    const data = abstractSchema.parse(subject).subject;
+    const releaseYear = Number(data.release_year);
+    if (
+      data.is_tv !== (mediaType === 'tv') ||
+      !Number.isInteger(releaseYear) ||
+      releaseYear < 1870 ||
+      (year !== undefined && releaseYear !== year)
+    )
+      return null;
+    const score = Number(data.rate);
+    return {
+      id: data.id,
+      title: data.title,
+      year: releaseYear,
+      score: Number.isFinite(score) && score > 0 && score <= 10 ? score : null,
+      url: `https://movie.douban.com/subject/${data.id}/`,
+    };
+  }
+
+  public async getRatingByImdb({
+    imdbId,
+    mediaType,
+    year,
+  }: {
+    imdbId: string;
+    mediaType: 'movie' | 'tv';
+    year?: number;
+  }): Promise<DoubanRating | null> {
+    if (!/^tt\d{7,12}$/.test(imdbId) || !year || !Number.isInteger(year))
+      return null;
+    const cache = cacheManager.getCache('douban').data;
+    const key = `imdb:${mediaType}:${imdbId}:${year}`;
+    const cached = cache.get<{ rating: DoubanRating | null }>(key);
+    if (cached) return cached.rating;
+    const pending = pendingRatings.get(key);
+    if (pending) return pending;
+    const request = (async () => {
+      // subject_suggest does not accept IMDb IDs; Douban's website search does.
+      const html = await this.get<string>('https://www.douban.com/search', {
+        params: { cat: '1002', q: imdbId },
+        headers: { Accept: 'text/html', Referer: 'https://www.douban.com/' },
+        responseType: 'text',
+        maxRedirects: 0,
+        maxContentLength: 1024 * 1024,
+      });
+      if (
+        typeof html !== 'string' ||
+        !/class=["']search-result["']/.test(html) ||
+        !/class=["'](?:result-list|no-result)["']/.test(html)
+      ) {
+        throw new Error('Invalid Douban IMDb search response');
+      }
+      const ids = new Set<string>();
+      // Only accept search links tied to this exact query/category. Never fetch
+      // URLs supplied by the page, including redirects and recommended titles.
+      for (const match of html.matchAll(/<a\b[^>]*\bhref=["']([^"']+)["']/gi)) {
+        try {
+          const link = new URL(match[1].replace(/&amp;/g, '&'));
+          if (
+            link.origin !== 'https://www.douban.com' ||
+            link.pathname !== '/link2/' ||
+            link.searchParams.get('query') !== imdbId ||
+            link.searchParams.get('cat_id') !== '1002' ||
+            link.searchParams.get('type') !== 'search'
+          )
+            continue;
+          const target = new URL(link.searchParams.get('url') ?? '');
+          const id = target.pathname.match(
+            /^\/subject\/([1-9]\d{0,11})\/?$/
+          )?.[1];
+          if (target.origin === 'https://movie.douban.com' && id) ids.add(id);
+        } catch {
+          /* Ignore malformed links, not provider errors. */
+        }
+      }
+      if (/class=["']result-list["']/.test(html) && !ids.size) {
+        throw new Error('Unrecognized Douban IMDb search results');
+      }
+      const matches =
+        ids.size <= 3
+          ? (
+              await Promise.all(
+                [...ids].map((id) => this.getSubject(id, mediaType, year))
+              )
+            ).filter((rating) => rating !== null)
+          : [];
+      const rating = matches.length === 1 ? matches[0] : null;
+      cache.set(key, { rating }, rating?.score ? RATING_TTL : NO_RATING_TTL);
+      return rating;
+    })().finally(() => pendingRatings.delete(key));
+    pendingRatings.set(key, request);
+    return request;
+  }
+
   public async getComments(
     subjectId: string,
     sort: DoubanCommentSort = 'new_score'
@@ -216,72 +338,51 @@ class Douban extends ExternalAPI {
     const names = new Set(
       titles.map((title) => normalizeTitle(title, mediaType))
     );
-    const results = await Promise.all(
-      titles.map((q) =>
-        this.get<unknown>('/j/subject_suggest', {
-          params: { q },
-          maxRedirects: 0,
-          maxContentLength: 1024 * 1024,
-        })
-      )
-    );
-
+    // Douban's suggestions can differ by case/character width (for example,
+    // 哆啦A梦 omits the 2005 series, while 哆啦a梦 includes it). Retry only on
+    // a miss, keeping successful original-title lookups fast and unchanged.
+    const normalizedQueries = [
+      ...new Set(
+        titles.map((title) => title.normalize('NFKC').toLowerCase().trim())
+      ),
+    ].filter((query) => query && !titles.includes(query));
     const candidates = new Map<string, z.infer<typeof suggestionSchema>>();
-    for (const result of results) {
-      if (!Array.isArray(result)) {
-        throw new Error('Invalid Douban search response');
-      }
-      for (const item of result) {
-        const parsed = suggestionSchema.safeParse(item);
-        if (!parsed.success) continue;
-        const candidate = parsed.data;
-        if (
-          candidate.year === String(year) &&
-          [candidate.title, candidate.sub_title].some(
-            (title) => title && names.has(normalizeTitle(title, mediaType))
-          )
-        ) {
-          candidates.set(candidate.id, candidate);
+    for (const queries of [titles, normalizedQueries]) {
+      const results = await Promise.all(
+        queries.map((q) =>
+          this.get<unknown>('/j/subject_suggest', {
+            params: { q },
+            maxRedirects: 0,
+            maxContentLength: 1024 * 1024,
+          })
+        )
+      );
+      for (const result of results) {
+        if (!Array.isArray(result)) {
+          throw new Error('Invalid Douban search response');
+        }
+        for (const item of result) {
+          const parsed = suggestionSchema.safeParse(item);
+          if (!parsed.success) continue;
+          const candidate = parsed.data;
+          if (
+            candidate.year === String(year) &&
+            [candidate.title, candidate.sub_title].some(
+              (title) => title && names.has(normalizeTitle(title, mediaType))
+            )
+          ) {
+            candidates.set(candidate.id, candidate);
+          }
         }
       }
+      if (candidates.size) break;
     }
 
     // Never choose the first search hit or fan out over an ambiguous result set.
     if (!candidates.size || candidates.size > 3) return null;
 
     const matches = await Promise.all(
-      [...candidates.values()].map(
-        async (candidate): Promise<DoubanRating | null> => {
-          const data = await this.get<unknown>('/j/subject_abstract', {
-            params: { subject_id: candidate.id },
-            maxRedirects: 0,
-            maxContentLength: 1024 * 1024,
-          });
-          const parsed = abstractSchema.safeParse(data);
-          if (!parsed.success)
-            throw new Error('Invalid Douban subject response');
-
-          const subject = parsed.data.subject;
-          if (
-            subject.id !== candidate.id ||
-            subject.release_year !== String(year) ||
-            subject.is_tv !== (mediaType === 'tv')
-          ) {
-            return null;
-          }
-
-          const score = Number(subject.rate);
-          return {
-            id: subject.id,
-            title: subject.title,
-            year,
-            score:
-              Number.isFinite(score) && score > 0 && score <= 10 ? score : null,
-            // Build the link from the validated numeric ID, never an upstream URL.
-            url: `https://movie.douban.com/subject/${subject.id}/`,
-          };
-        }
-      )
+      [...candidates.keys()].map((id) => this.getSubject(id, mediaType, year))
     );
 
     const ratings = matches.filter((rating) => rating !== null);

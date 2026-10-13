@@ -1683,5 +1683,21 @@
   "components.MovieDetails.play4k": "",
   "components.Settings.Notifications.NotificationsGotify.priority": "",
   "components.RequestList.RequestItem.profileName": "",
-  "components.Settings.SettingsJobsCache.ipv4Fallbacks": ""
+  "components.Settings.SettingsJobsCache.ipv4Fallbacks": "",
+  "components.DoubanComments.BindingModal.cancel": "取消",
+  "components.DoubanComments.BindingModal.error": "豆瓣暫時無法存取，請稍後重試。",
+  "components.DoubanComments.BindingModal.help": "貼上豆瓣條目連結或編號，核對名稱和年份後儲存。綁定將用於所有使用者看到的評分與短評。",
+  "components.DoubanComments.BindingModal.imdb": "透過 IMDb 編號比對",
+  "components.DoubanComments.BindingModal.input": "豆瓣條目連結或編號",
+  "components.DoubanComments.BindingModal.invalid": "請輸入有效的豆瓣條目連結或純數字編號。",
+  "components.DoubanComments.BindingModal.manual": "手動綁定",
+  "components.DoubanComments.BindingModal.mismatch": "該條目的類型不符，請選擇對應的電影或影集。",
+  "components.DoubanComments.BindingModal.name": "透過名稱和年份比對",
+  "components.DoubanComments.BindingModal.preview": "核對條目",
+  "components.DoubanComments.BindingModal.reset": "恢復自動匹配",
+  "components.DoubanComments.BindingModal.save": "儲存綁定",
+  "components.DoubanComments.BindingModal.saved": "目前綁定：{id}",
+  "components.DoubanComments.BindingModal.title": "綁定豆瓣條目",
+  "components.DoubanComments.BindingModal.year": "年份：{year}",
+  "components.DoubanComments.binding": "綁定豆瓣條目"
 }

@@ -47,6 +47,20 @@ servers:
         default: http://localhost:5055
 
 components:
+  responses:
+    DoubanBindingError:
+      description: Invalid request, insufficient permissions, or Douban temporarily unavailable.
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              message:
+                type: string
+              error:
+                type: string
+              status:
+                type: integer
   schemas:
     DoubanRatingResponse:
       type: object
@@ -76,6 +90,20 @@ components:
               type: string
               format: uri
               example: 'https://movie.douban.com/subject/37083974/'
+    DoubanBindingResponse:
+      type: object
+      required: [binding]
+      properties:
+        binding:
+          type: object
+          nullable: true
+          required: [doubanId, source]
+          properties:
+            doubanId:
+              type: string
+            source:
+              type: string
+              enum: [manual, imdb, title]
     DoubanCommentsResponse:
       type: object
       required: [subject, comments, total]
@@ -6998,10 +7026,122 @@ paths:
                     type: array
                     items:
                       $ref: '#/components/schemas/MovieResult'
+  /movie/{movieId}/douban:
+    get:
+      summary: Get the saved Douban binding
+      description: Requires administrator permission. Does not perform an automatic lookup.
+      tags: [movies]
+      parameters:
+        - in: path
+          name: movieId
+          required: true
+          schema:
+            type: integer
+            minimum: 1
+      responses:
+        '200':
+          description: Saved binding, or null
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DoubanBindingResponse'
+        '400':
+          $ref: '#/components/responses/DoubanBindingError'
+        '403':
+          $ref: '#/components/responses/DoubanBindingError'
+        '503':
+          $ref: '#/components/responses/DoubanBindingError'
+    put:
+      summary: Manually bind a Douban subject
+      description: Requires administrator permission. The subject must have the same media type. An explicit binding can override title or year differences and is shared by all viewers.
+      tags: [movies]
+      parameters:
+        - in: path
+          name: movieId
+          required: true
+          schema:
+            type: integer
+            minimum: 1
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [doubanId]
+              properties:
+                doubanId:
+                  type: string
+                  pattern: '^[1-9]\d{0,11}$'
+      responses:
+        '200':
+          description: Validated Douban subject
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DoubanRatingResponse'
+        '400':
+          $ref: '#/components/responses/DoubanBindingError'
+        '403':
+          $ref: '#/components/responses/DoubanBindingError'
+        '503':
+          $ref: '#/components/responses/DoubanBindingError'
+    delete:
+      summary: Reset a Douban binding
+      description: Requires administrator permission. The next rating or review lookup performs automatic matching again.
+      tags: [movies]
+      parameters:
+        - in: path
+          name: movieId
+          required: true
+          schema:
+            type: integer
+            minimum: 1
+      responses:
+        '204':
+          description: Binding removed
+        '400':
+          $ref: '#/components/responses/DoubanBindingError'
+        '403':
+          $ref: '#/components/responses/DoubanBindingError'
+        '503':
+          $ref: '#/components/responses/DoubanBindingError'
+  /movie/{movieId}/douban/preview:
+    get:
+      summary: Preview a Douban subject before binding
+      description: Requires administrator permission. Does not save a binding.
+      tags: [movies]
+      parameters:
+        - in: path
+          name: movieId
+          required: true
+          schema:
+            type: integer
+            minimum: 1
+        - in: query
+          name: doubanId
+          required: true
+          schema:
+            type: string
+            pattern: '^[1-9]\d{0,11}$'
+      responses:
+        '200':
+          description: Validated Douban subject
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DoubanRatingResponse'
+        '400':
+          $ref: '#/components/responses/DoubanBindingError'
+        '403':
+          $ref: '#/components/responses/DoubanBindingError'
+        '503':
+          $ref: '#/components/responses/DoubanBindingError'
   /movie/{movieId}/ratings/douban:
     get:
       summary: Get the Douban movie rating
-      description: Matches the Chinese or original title and release year against Douban. Returns a null rating when there is no unambiguous match; a null score means the matched title is not yet rated.
+      description: Uses a saved binding first, then IMDb search with year/type validation, then Chinese or original title and release year. Successful matches are persisted. Returns a null rating when there is no unambiguous match; a null score means the matched title is not yet rated.
       tags:
         - movies
       parameters:
@@ -7293,6 +7433,118 @@ paths:
                     type: array
                     items:
                       $ref: '#/components/schemas/TvResult'
+  /tv/{tvId}/douban:
+    get:
+      summary: Get the saved Douban binding
+      description: Requires administrator permission. Does not perform an automatic lookup.
+      tags: [tv]
+      parameters:
+        - in: path
+          name: tvId
+          required: true
+          schema:
+            type: integer
+            minimum: 1
+      responses:
+        '200':
+          description: Saved binding, or null
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DoubanBindingResponse'
+        '400':
+          $ref: '#/components/responses/DoubanBindingError'
+        '403':
+          $ref: '#/components/responses/DoubanBindingError'
+        '503':
+          $ref: '#/components/responses/DoubanBindingError'
+    put:
+      summary: Manually bind a Douban subject
+      description: Requires administrator permission. The subject must have the same media type. An explicit binding can override title or year differences and is shared by all viewers.
+      tags: [tv]
+      parameters:
+        - in: path
+          name: tvId
+          required: true
+          schema:
+            type: integer
+            minimum: 1
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [doubanId]
+              properties:
+                doubanId:
+                  type: string
+                  pattern: '^[1-9]\d{0,11}$'
+      responses:
+        '200':
+          description: Validated Douban subject
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DoubanRatingResponse'
+        '400':
+          $ref: '#/components/responses/DoubanBindingError'
+        '403':
+          $ref: '#/components/responses/DoubanBindingError'
+        '503':
+          $ref: '#/components/responses/DoubanBindingError'
+    delete:
+      summary: Reset a Douban binding
+      description: Requires administrator permission. The next rating or review lookup performs automatic matching again.
+      tags: [tv]
+      parameters:
+        - in: path
+          name: tvId
+          required: true
+          schema:
+            type: integer
+            minimum: 1
+      responses:
+        '204':
+          description: Binding removed
+        '400':
+          $ref: '#/components/responses/DoubanBindingError'
+        '403':
+          $ref: '#/components/responses/DoubanBindingError'
+        '503':
+          $ref: '#/components/responses/DoubanBindingError'
+  /tv/{tvId}/douban/preview:
+    get:
+      summary: Preview a Douban subject before binding
+      description: Requires administrator permission. Does not save a binding.
+      tags: [tv]
+      parameters:
+        - in: path
+          name: tvId
+          required: true
+          schema:
+            type: integer
+            minimum: 1
+        - in: query
+          name: doubanId
+          required: true
+          schema:
+            type: string
+            pattern: '^[1-9]\d{0,11}$'
+      responses:
+        '200':
+          description: Validated Douban subject
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DoubanRatingResponse'
+        '400':
+          $ref: '#/components/responses/DoubanBindingError'
+        '403':
+          $ref: '#/components/responses/DoubanBindingError'
+        '503':
+          $ref: '#/components/responses/DoubanBindingError'
   /tv/{tvId}/ratings/douban:
     get:
       summary: Get the Douban TV rating

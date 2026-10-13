@@ -6,16 +6,33 @@ import { MediaType } from '@server/constants/media';
 import { getRepository } from '@server/datasource';
 import Media from '@server/entity/Media';
 import { Watchlist } from '@server/entity/Watchlist';
+import { Permission } from '@server/lib/permissions';
 import logger from '@server/logger';
+import { isAuthenticated } from '@server/middleware/auth';
 import { mapMovieDetails } from '@server/models/Movie';
 import { mapMovieResult } from '@server/models/Search';
 import { Router } from 'express';
-import { doubanCommentsHandler, doubanRatingHandler } from './ratings';
+import {
+  doubanBindingHandler,
+  doubanCommentsHandler,
+  doubanRatingHandler,
+} from './ratings';
 
 const movieRoutes = Router();
 
 movieRoutes.get('/:id/ratings/douban', doubanRatingHandler('movie'));
 movieRoutes.get('/:id/comments/douban', doubanCommentsHandler('movie'));
+movieRoutes
+  .route('/:id/douban')
+  .all(isAuthenticated(Permission.ADMIN))
+  .get(doubanBindingHandler('movie'))
+  .put(doubanBindingHandler('movie'))
+  .delete(doubanBindingHandler('movie'));
+movieRoutes.get(
+  '/:id/douban/preview',
+  isAuthenticated(Permission.ADMIN),
+  doubanBindingHandler('movie')
+);
 
 movieRoutes.get('/:id', async (req, res, next) => {
   const tmdb = new TheMovieDb();

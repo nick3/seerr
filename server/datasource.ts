@@ -1,5 +1,6 @@
 import { Blocklist } from '@server/entity/Blocklist';
 import DiscoverSlider from '@server/entity/DiscoverSlider';
+import DoubanBinding from '@server/entity/DoubanBinding';
 import Issue from '@server/entity/Issue';
 import IssueComment from '@server/entity/IssueComment';
 import Media from '@server/entity/Media';
@@ -27,6 +28,7 @@ const DB_SSL_PREFIX = 'DB_SSL_';
 const entities = [
   Blocklist,
   DiscoverSlider,
+  DoubanBinding,
   Issue,
   IssueComment,
   Media,

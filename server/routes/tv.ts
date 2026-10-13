@@ -7,16 +7,33 @@ import { MediaType } from '@server/constants/media';
 import { getRepository } from '@server/datasource';
 import Media from '@server/entity/Media';
 import { Watchlist } from '@server/entity/Watchlist';
+import { Permission } from '@server/lib/permissions';
 import logger from '@server/logger';
+import { isAuthenticated } from '@server/middleware/auth';
 import { mapTvResult } from '@server/models/Search';
 import { mapSeasonWithEpisodes, mapTvDetails } from '@server/models/Tv';
 import { Router } from 'express';
-import { doubanCommentsHandler, doubanRatingHandler } from './ratings';
+import {
+  doubanBindingHandler,
+  doubanCommentsHandler,
+  doubanRatingHandler,
+} from './ratings';
 
 const tvRoutes = Router();
 
 tvRoutes.get('/:id/ratings/douban', doubanRatingHandler('tv'));
 tvRoutes.get('/:id/comments/douban', doubanCommentsHandler('tv'));
+tvRoutes
+  .route('/:id/douban')
+  .all(isAuthenticated(Permission.ADMIN))
+  .get(doubanBindingHandler('tv'))
+  .put(doubanBindingHandler('tv'))
+  .delete(doubanBindingHandler('tv'));
+tvRoutes.get(
+  '/:id/douban/preview',
+  isAuthenticated(Permission.ADMIN),
+  doubanBindingHandler('tv')
+);
 
 tvRoutes.get('/:id', async (req, res, next) => {
   const tmdb = new TheMovieDb();

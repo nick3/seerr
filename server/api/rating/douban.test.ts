@@ -114,11 +114,97 @@ describe('Douban ratings', () => {
     );
   });
 
+  for (const title of ['哆啦A梦', '哆啦Ａ梦']) {
+    it(`finds Doraemon (2005) when Douban omits it for the search spelling ${title}`, async () => {
+      const api = new Douban();
+      const axios = (api as unknown as { axios: AxiosInstance }).axios;
+      // Captured from subject_suggest: uppercase A only returned the 2025
+      // film, while lowercase a also returned the 1979 and 2005 TV series.
+      const film = {
+        id: '36809928',
+        title: '哆啦A梦：大雄的绘画奇遇记',
+        sub_title: '映画ドラえもん のび太の絵世界物語',
+        year: '2025',
+      };
+      const series = {
+        id: '3538051',
+        title: '哆啦A梦',
+        sub_title: 'ドラえもん',
+        year: '2005',
+      };
+      mock.method(
+        axios,
+        'get',
+        async (path: string, config: AxiosRequestConfig) => {
+          if (path === '/j/subject_suggest') {
+            return {
+              data:
+                config.params.q === '哆啦a梦'
+                  ? [film, { ...series, id: '1782004', year: '1979' }, series]
+                  : config.params.q === '哆啦A梦'
+                    ? [film]
+                    : [],
+            };
+          }
+          assert.equal(config.params.subject_id, series.id);
+          return {
+            data: {
+              r: 0,
+              subject: {
+                id: series.id,
+                title: '哆啦A梦 ドラえもん‎ (2005)',
+                release_year: '2005',
+                is_tv: true,
+                rate: '9.6',
+              },
+            },
+          };
+        }
+      );
+
+      const rating = await api.getRating({
+        mediaType: 'tv',
+        titles: [title, 'ドラえもん'],
+        year: 2005,
+      });
+      assert.equal(rating?.id, '3538051');
+      assert.equal(rating?.score, 9.6);
+    });
+  }
+
+  it('does not repeat a normalized query that was already searched', async () => {
+    const api = new Douban();
+    const get = stub(api, []);
+    assert.equal(
+      await api.getRating({ ...lookup, titles: ['missing', 'ｍｉｓｓｉｎｇ'] }),
+      null
+    );
+    assert.equal(get.mock.callCount(), 2);
+  });
+
+  it('does not cache failures from the normalized search as a missing title', async () => {
+    const api = new Douban();
+    const axios = (api as unknown as { axios: AxiosInstance }).axios;
+    mock.method(
+      axios,
+      'get',
+      async (_path: string, config: AxiosRequestConfig) => ({
+        data: config.params.q === 'carrie' ? '<html>Unavailable</html>' : [],
+      })
+    );
+    await assert.rejects(
+      api.getRating(lookup),
+      /Invalid Douban search response/
+    );
+    stub(api);
+    assert.equal((await api.getRating(lookup))?.score, 7.8);
+  });
+
   it('rejects a same-name remake with a different year', async () => {
     const api = new Douban();
     const get = stub(api, [{ ...suggestion, year: '1976' }]);
     assert.equal(await api.getRating(lookup), null);
-    assert.equal(get.mock.callCount(), 2);
+    assert.equal(get.mock.callCount(), 3);
   });
 
   it('rejects loosely similar titles and unrelated search results', async () => {
@@ -130,16 +216,21 @@ describe('Douban ratings', () => {
   });
 
   it('checks the media type and year again in the subject response', async () => {
-    for (const mismatch of [
-      { is_tv: false },
-      { release_year: '1976' },
-      { id: '99999' },
-    ]) {
+    for (const mismatch of [{ is_tv: false }, { release_year: '1976' }]) {
       const api = new Douban();
       cacheManager.getCache('douban').flush();
       stub(api, [suggestion], { r: 0, subject: { ...subject, ...mismatch } });
       assert.equal(await api.getRating(lookup), null);
     }
+  });
+
+  it('rejects an abstract for a different subject instead of caching it', async () => {
+    const api = new Douban();
+    stub(api, [suggestion], { r: 0, subject: { ...subject, id: '99999' } });
+    await assert.rejects(
+      api.getRating(lookup),
+      /Invalid Douban subject response/
+    );
   });
 
   it('accepts the first season but never substitutes a later season', async () => {
@@ -207,7 +298,7 @@ describe('Douban ratings', () => {
     const emptyGet = stub(miss, []);
     assert.equal(await miss.getRating(lookup), null);
     assert.equal(await new Douban().getRating(lookup), null);
-    assert.equal(emptyGet.mock.callCount(), 2);
+    assert.equal(emptyGet.mock.callCount(), 3);
   });
 
   it('does not cache a blocked or malformed provider response as a missing title', async () => {
@@ -245,7 +336,7 @@ describe('Douban ratings', () => {
     cacheManager.getCache('douban').flush();
     const get = stub(api, [{ ...suggestion, id: '../admin' }]);
     assert.equal(await api.getRating(lookup), null);
-    assert.equal(get.mock.callCount(), 2);
+    assert.equal(get.mock.callCount(), 3);
   });
 
   it('does not search without enough identifying information', async () => {
